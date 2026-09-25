@@ -22,12 +22,13 @@ export default async function handler(req, res) {
   const grapeVariety = field(body, 'grapeVariety');
   const country = field(body, 'country');
   const region = field(body, 'region');
+  const place = field(body, 'place');
   const classification = field(body, 'classification');
 
   const promptText =
     'You are a wine expert with access to a search engine. Search online for information about this wine: ' +
     `estate/producer "${estate}", name "${name}"${vintage ? `, vintage ${vintage}` : ''}` +
-    `${grapeVariety ? `, (possibly unreliable) grape variety "${grapeVariety}"` : ''}${region || country ? `, (possibly unreliable) region "${region}, ${country}"` : ''}` +
+    `${grapeVariety ? `, (possibly unreliable) grape variety "${grapeVariety}"` : ''}${region || country ? `, (possibly unreliable) region "${[place, region, country].filter(Boolean).join(', ')}"` : ''}` +
     `${classification && !/not stated/i.test(classification) ? `, classification "${classification}"` : ''}. ` +
     'The grape variety and region above may come from an automatic photo scan of the label and could be wrong. ' +
     'Use the search engine to find (1) the ACTUAL grape variety/blend and the ACTUAL wine region for this specific wine, to verify or correct the values above, ' +
@@ -46,7 +47,8 @@ export default async function handler(req, res) {
     'flavorProfile (array of 4-7 short English flavor or aroma terms such as "Black cherry", "Clove", "Vanilla", or an empty array [] if nothing found), ' +
     'estimatedPrice (number, average retail price per bottle in EUR with no currency symbol, e.g. 15.50, or 0 if the search gave you nothing to base it on), ' +
     'grapeVariety (the verified grape variety/blend if you found it with confidence, e.g. "Grenache, Syrah, Mourvèdre", or an empty string "" if not confident or nothing different from the given value), ' +
-    'region (the verified wine region/appellation if you found it with confidence, e.g. "Châteauneuf-du-Pape", or an empty string "" if not confident or nothing different from the given value).';
+    'region (the verified BROAD wine region only, in the local spelling used on labels, e.g. "Bourgogne", "Champagne", "Rhône", "Toscana" — never a village — or an empty string "" if not confident), ' +
+    'place (the verified village or sub-appellation, e.g. "Châteauneuf-du-Pape", "Meursault", "Pauillac", or an empty string "" if there is none or you are not confident).';
 
   try {
     const result = await callClaude(apiKey, {
@@ -109,6 +111,7 @@ export default async function handler(req, res) {
       estimatedPrice: Number.isFinite(estimatedPrice) && estimatedPrice > 0 ? Math.round(estimatedPrice * 100) / 100 : 0,
       grapeVariety: stripCiteTags(parsed.grapeVariety),
       region: stripCiteTags(parsed.region),
+      place: stripCiteTags(parsed.place),
     });
   } catch (e) {
     console.error('enrich: unexpected error', e);

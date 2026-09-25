@@ -74,8 +74,12 @@ export function modalHTML(ui, state) {
           </div>
           <div class="field">
             <label>Region</label>
-            <input id="f-region" value="${val('region', 'Ahr')}">
+            <input id="f-region" placeholder="e.g. Bourgogne" value="${val('region', 'Ahr')}">
           </div>
+        </div>
+        <div class="field">
+          <label>Village / appellation (optional)</label>
+          <input id="f-place" placeholder="e.g. Meursault, Pauillac" value="${val('place', '')}">
         </div>
         <div class="field">
           <label>Estate</label>

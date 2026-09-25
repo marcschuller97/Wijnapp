@@ -1,9 +1,14 @@
+import { normalizeRegionPlace } from './model.js';
+
 const COLOR_OPTIONS = ['White', 'Rosé', 'Red'];
 
 export function toDraftItem(raw) {
+  // Show the review screen already split into region + village/appellation.
+  const { region, place } = normalizeRegionPlace(raw.region, raw.place);
   return {
     country: raw.country || 'Germany',
-    region: raw.region || '',
+    region,
+    place,
     estate: raw.estate || '',
     name: raw.name || '',
     vintage: raw.vintage || '',

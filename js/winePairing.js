@@ -17,6 +17,7 @@ export async function findWinePairing(dish, inventory) {
       sparkling: w.sparkling,
       country: w.country,
       region: w.region,
+      place: w.place || '',
       vintage: w.vintage,
       classification: w.classification,
       flavorProfile: w.flavorProfile || [],

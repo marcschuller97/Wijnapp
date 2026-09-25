@@ -36,6 +36,7 @@ export function batchModalHTML(ui) {
           <div class="batch-mini-field"><label>Country</label><input data-batch-field="country" data-index="${i}" value="${escapeHtml(b.country)}"></div>
           <div class="batch-mini-field"><label>Region</label><input data-batch-field="region" data-index="${i}" value="${escapeHtml(b.region)}"></div>
         </div>
+        <div class="batch-mini-field"><label>Village / appellation</label><input data-batch-field="place" data-index="${i}" value="${escapeHtml(b.place || '')}"></div>
         <div class="batch-mini-field"><label>Estate</label><input data-batch-field="estate" data-index="${i}" value="${escapeHtml(b.estate)}"></div>
         <div class="batch-mini-field"><label>Name</label><input data-batch-field="name" data-index="${i}" value="${escapeHtml(b.name)}"></div>
         <div class="batch-mini-row">

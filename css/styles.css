@@ -308,6 +308,22 @@ button.stat:active{background:var(--surface-2);}
   padding-bottom:1px;
 }
 .color-filter-row::-webkit-scrollbar{display:none;}
+.grape-filter-row{display:flex;align-items:center;gap:10px;margin:-6px 0 16px;}
+.grape-filter-label{
+  font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--text-muted);flex-shrink:0;
+}
+.grape-filter{
+  flex:1;min-width:0;
+  padding:8px 34px 8px 14px;
+  border-radius:999px;
+  background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23c3a56b' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 14px center;
+  border:1px solid var(--border);
+  color:var(--text);
+  font-family:'Inter',sans-serif;font-size:13px;
+  -webkit-appearance:none;appearance:none;
+}
+.grape-filter.active{border-color:var(--gold);color:var(--gold);}
 .color-chip{
   display:flex;
   align-items:center;

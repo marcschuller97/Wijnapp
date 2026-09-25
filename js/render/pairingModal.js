@@ -13,7 +13,7 @@ export function pairingModalHTML(ui, state) {
       return `
         <button class="pairing-result" data-action="open-detail-from-pairing" data-id="${escapeHtml(wine.id)}">
           <div class="pairing-result-name">${escapeHtml(wine.name)}</div>
-          <div class="wine-meta-domein">${escapeHtml(wine.estate)} · ${escapeHtml(wine.region)}, ${escapeHtml(wine.country)}</div>
+          <div class="wine-meta-domein">${escapeHtml(wine.estate)} · ${wine.place ? `${escapeHtml(wine.place)}, ` : ''}${escapeHtml(wine.region)}, ${escapeHtml(wine.country)}</div>
           <p class="pairing-result-reason">${escapeHtml(m.reason)}</p>
         </button>`;
     })

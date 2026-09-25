@@ -102,7 +102,7 @@ async function handleMockAnthropic(req, res) {
       text(
         '```json\n' +
           JSON.stringify([
-            { country: 'France', region: 'Bordeaux', estate: "Château L'Évangile", name: 'Blason de l’Évangile', vintage: 2019, grapeVariety: 'Merlot, Cabernet Franc', color: 'Red', sparkling: false, classification: 'Pomerol AOC', quantity: receipt ? 2 : 1, price: receipt ? 39.5 : 0 },
+            { country: 'France', region: 'Pomerol', estate: "Château L'Évangile", name: 'Blason de l’Évangile', vintage: 2019, grapeVariety: 'Merlot, Cabernet Franc', color: 'Red', sparkling: false, classification: 'Pomerol AOC', quantity: receipt ? 2 : 1, price: receipt ? 39.5 : 0 },
             { country: 'Germany', region: 'Pfalz', estate: 'Weingut <b>Test</b>', name: 'Riesling "Kalkmergel"', vintage: 2022, grapeVariety: 'Riesling', color: 'White', sparkling: false, classification: 'VDP.Ortswein', quantity: 1, price: 0 },
           ]) +
           '\n```'

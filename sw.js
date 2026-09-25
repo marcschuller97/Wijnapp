@@ -1,6 +1,6 @@
 // Bump this on EVERY deploy that changes a file below — otherwise phones keep
 // serving the previous version from cache.
-const CACHE_NAME = 'winecellar-v7';
+const CACHE_NAME = 'winecellar-v8';
 const ASSETS = [
   './index.html',
   './manifest.json',
@@ -17,6 +17,7 @@ const ASSETS = [
   './js/winePairing.js',
   './js/wineEnrich.js',
   './js/data/seedWines.js',
+  './js/data/regions.js',
   './js/render/card.js',
   './js/render/donut.js',
   './js/render/pieChart.js',

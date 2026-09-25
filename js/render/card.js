@@ -40,7 +40,7 @@ export function cardHTML(wine, showEstate) {
         <div>
           <div class="wine-name">${escapeHtml(wine.name)}</div>
           <div class="wine-meta">${escapeHtml(wine.vintage)} · ${escapeHtml(wine.grapeVariety)} · ${formatEuro(wine.price)}</div>
-          ${showEstate ? `<div class="wine-meta-domein">${escapeHtml(wine.estate)} · ${escapeHtml(wine.region)}, ${escapeHtml(wine.country)}</div>` : ''}
+          ${showEstate ? `<div class="wine-meta-domein">${escapeHtml(wine.estate)} · ${wine.place ? `${escapeHtml(wine.place)}, ` : ''}${escapeHtml(wine.region)}, ${escapeHtml(wine.country)}</div>` : ''}
           ${noteHTML(wine.notes)}
         </div>
         <div class="card-top-right">

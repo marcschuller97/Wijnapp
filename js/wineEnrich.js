@@ -18,6 +18,7 @@ export async function enrichWine(wine) {
         grapeVariety: wine.grapeVariety,
         country: wine.country,
         region: wine.region,
+        place: wine.place || '',
         classification: wine.classification,
       }),
     });
@@ -33,7 +34,7 @@ export async function enrichWine(wine) {
     }
     const hasSomething =
       data &&
-      (data.description || (data.flavorProfile && data.flavorProfile.length > 0) || data.estimatedPrice > 0 || data.grapeVariety || data.region);
+      (data.description || (data.flavorProfile && data.flavorProfile.length > 0) || data.estimatedPrice > 0 || data.grapeVariety || data.region || data.place);
     return { data: hasSomething ? data : null };
   } catch (e) {
     return { error: 'No connection — please try again when you are online.' };

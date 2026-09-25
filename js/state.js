@@ -1,5 +1,6 @@
 import { DEFAULT_WINES } from './data/seedWines.js';
 import { generateId } from './utils.js';
+import { normalizeRegionPlace } from './model.js';
 import { authHeaders } from './auth.js';
 
 const STORAGE_KEY = 'winecellar-data';
@@ -101,6 +102,30 @@ function loadLocal() {
 }
 
 export async function loadState() {
+  await loadStateFromSources();
+  if (migrateInventory()) persist();
+}
+
+// One-time upgrade for wines saved before the Place field existed: split
+// "Loire (Sancerre)" into region Loire + place Sancerre, map "Burgundy" to
+// Bourgogne, etc. Wines that already have a place key are left alone.
+function migrateInventory() {
+  let changed = false;
+  state.inventory.forEach((w) => {
+    if (w.place !== undefined) return;
+    const { region, place } = normalizeRegionPlace(w.region, '');
+    w.region = region;
+    w.place = place;
+    changed = true;
+  });
+  // A region we navigated into may have been renamed.
+  if (changed && state.nav && state.nav.level !== 'country') {
+    state.nav = { level: 'country', country: null, region: null, estate: null };
+  }
+  return changed;
+}
+
+async function loadStateFromSources() {
   const hadLocal = loadLocal();
 
   try {
@@ -170,7 +195,11 @@ export async function refreshFromServer() {
       JSON.stringify(remote.inventory) !== JSON.stringify(state.inventory) ||
       JSON.stringify(remote.history || []) !== JSON.stringify(state.history) ||
       (remote.ownerName || '') !== (state.ownerName || '');
-    if (changed) applyRemote(remote);
+    if (changed) {
+      applyRemote(remote);
+      // Data written by a device still on an older version of the app.
+      if (migrateInventory()) persist();
+    }
     return changed;
   } catch (e) {
     return false;
@@ -180,6 +209,7 @@ export async function refreshFromServer() {
 function normalizeWine(w) {
   return {
     ...w,
+    ...normalizeRegionPlace(w.region, w.place),
     quantity: Math.max(0, Number(w.quantity) || 0),
     price: Number(w.price) || 0,
     vintage: Number(w.vintage) || new Date().getFullYear(),

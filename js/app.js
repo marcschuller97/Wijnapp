@@ -1,6 +1,6 @@
 import { state, loadState, refreshFromServer, adjustCount, markDrunk, addWine, updateWine, deleteWine, resetData, setNav, setOwnerName } from './state.js';
 import { sumBottles, escapeHtml } from './utils.js';
-import { ripeningInfo } from './model.js';
+import { ripeningInfo, normalizeRegionPlace } from './model.js';
 import { renderVoorraad } from './render/voorraad.js';
 import { renderRecentlyAdded } from './render/recentlyAdded.js';
 import { renderDrinkSoon } from './render/binnenkort.js';
@@ -19,7 +19,9 @@ import { ensureUnlocked } from './auth.js';
 const ui = {
   activeTab: 'stock',
   colorFilter: 'All',
+  grapeFilter: 'All', // grape key (see parseGrapes) or 'All'
   sortBy: 'name',
+  priceDir: 'desc', // 'desc' high→low | 'asc' low→high
   searchQuery: '',
   modalOpen: false,
   modalMode: 'add', // 'add' | 'edit'
@@ -116,11 +118,11 @@ function render() {
         ui.detailId
           ? renderWineDetail(state.inventory.find((w) => w.id === ui.detailId), ui.enrichStatus)
           : `
-        ${ui.activeTab === 'stock' ? renderVoorraad(state, ui.searchQuery, ui.colorFilter, ui.sortBy) : ''}
+        ${ui.activeTab === 'stock' ? renderVoorraad(state, ui) : ''}
         ${ui.activeTab === 'recent' ? renderRecentlyAdded(state) : ''}
         ${ui.activeTab === 'soon' ? renderDrinkSoon(state) : ''}
         ${ui.activeTab === 'history' ? renderHistory(state) : ''}
-        ${ui.activeTab === 'price' ? renderByPrice(state, ui.colorFilter) : ''}
+        ${ui.activeTab === 'price' ? renderByPrice(state, ui.colorFilter, ui.grapeFilter, ui.priceDir) : ''}
       `
       }
     </div>
@@ -236,6 +238,7 @@ async function handlePairingSubmit() {
 function submitWine() {
   const country = document.getElementById('f-country').value.trim() || 'Germany';
   const region = document.getElementById('f-region').value.trim() || 'Ahr';
+  const place = document.getElementById('f-place').value.trim();
   const estate = document.getElementById('f-estate').value.trim();
   const name = document.getElementById('f-name').value.trim();
   const vintage = document.getElementById('f-vintage').value;
@@ -252,7 +255,7 @@ function submitWine() {
     return;
   }
 
-  const wine = { country, region, estate, name, vintage, grapeVariety, color, sparkling, classification, quantity, price, notes };
+  const wine = { country, region, place, estate, name, vintage, grapeVariety, color, sparkling, classification, quantity, price, notes };
   if (ui.modalMode === 'edit') {
     updateWine(ui.editingId, wine);
   } else {
@@ -279,6 +282,13 @@ function applyEnrichment(id, data) {
   // unreliable one.
   if (data.grapeVariety) updates.grapeVariety = data.grapeVariety;
   if (data.region) updates.region = data.region;
+  if (data.place) {
+    updates.place = data.place;
+  } else if (data.region && normalizeRegionPlace(data.region, '').region !== wine.region) {
+    // Moved to a different region: the old village came from the same
+    // unreliable reading, so don't keep it attached to the new region.
+    updates.place = '';
+  }
   updateWine(id, updates);
 }
 
@@ -340,10 +350,11 @@ async function handlePhotoFiles(files, mode) {
 }
 
 function exportCSV() {
-  const header = ['Country', 'Region', 'Estate', 'Name', 'Vintage', 'Grape Variety', 'Classification', 'Quantity', 'Price per bottle', 'Total'];
+  const header = ['Country', 'Region', 'Village / appellation', 'Estate', 'Name', 'Vintage', 'Grape Variety', 'Classification', 'Quantity', 'Price per bottle', 'Total'];
   const rows = state.inventory.map((w) => [
     w.country,
     w.region,
+    w.place || '',
     w.estate,
     w.name,
     w.vintage,
@@ -397,6 +408,7 @@ appEl.addEventListener('click', (e) => {
       ui.activeTab = 'stock';
       ui.searchQuery = '';
       ui.colorFilter = 'All';
+      ui.grapeFilter = 'All';
       ui.detailId = null;
       setNav('country');
       render();
@@ -410,6 +422,7 @@ appEl.addEventListener('click', (e) => {
     case 'show-by-price':
       ui.activeTab = 'price';
       ui.colorFilter = 'All';
+      ui.grapeFilter = 'All';
       ui.searchQuery = '';
       ui.detailId = null;
       render();
@@ -419,7 +432,15 @@ appEl.addEventListener('click', (e) => {
       render();
       break;
     case 'set-sort':
+      // Tapping Price while it's already active flips the direction.
+      if (el.dataset.sort === 'price' && ui.sortBy === 'price') {
+        ui.priceDir = ui.priceDir === 'asc' ? 'desc' : 'asc';
+      }
       ui.sortBy = el.dataset.sort;
+      render();
+      break;
+    case 'toggle-price-dir':
+      ui.priceDir = ui.priceDir === 'asc' ? 'desc' : 'asc';
       render();
       break;
     case 'edit-owner': {
@@ -529,6 +550,11 @@ appEl.addEventListener('input', (e) => {
 });
 
 appEl.addEventListener('change', (e) => {
+  if (e.target.id === 'grape-filter') {
+    ui.grapeFilter = e.target.value;
+    render();
+    return;
+  }
   if (e.target.type === 'file' && e.target.dataset.photoMode) {
     // Snapshot as a plain array before clearing .value — some browsers
     // reuse the same live FileList instance, so clearing .value empties

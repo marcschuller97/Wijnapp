@@ -34,7 +34,7 @@ export function renderWineDetail(wine, enrichStatus) {
     <button class="back-btn" data-action="close-detail">&lsaquo; Back</button>
 
     <div class="detail-hero">
-      <p class="eyebrow">${escapeHtml(wine.region)}, ${escapeHtml(wine.country)}</p>
+      <p class="eyebrow">${wine.place ? `${escapeHtml(wine.place)} · ` : ''}${escapeHtml(wine.region)}, ${escapeHtml(wine.country)}</p>
       <div class="detail-hero-top">
         <div class="detail-hero-title">
           <div class="wine-name">${escapeHtml(wine.name)}</div>
@@ -64,6 +64,7 @@ export function renderWineDetail(wine, enrichStatus) {
       ${infoRow('Producer', wine.estate)}
       ${infoRow('Grape variety', wine.grapeVariety)}
       ${infoRow('Region', `${wine.region}, ${wine.country}`)}
+      ${infoRow('Village / appellation', wine.place)}
       ${infoRow('Classification', hasClassification(wine.classification) ? wine.classification : '')}
       ${infoRow('Notes', wine.notes)}
     </div>

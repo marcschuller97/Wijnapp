@@ -2,7 +2,7 @@ import { escapeHtml, uniqueSorted, sumBottles } from '../utils.js';
 import { cardHTML } from './card.js';
 import { countryDonutInnerHTML, otherCountries } from './pieChart.js';
 import { colorSplitInnerHTML } from './colorSplit.js';
-import { colorFilterRowHTML, matchesFilter } from './colorFilter.js';
+import { colorFilterRowHTML, grapeFilterHTML, matchesFilters } from './colorFilter.js';
 import { ripeningInfo } from '../model.js';
 
 const SORT_OPTIONS = [
@@ -11,10 +11,15 @@ const SORT_OPTIONS = [
   { key: 'drinkby', label: 'Drink by' },
 ];
 
-function sortWines(wines, sortBy) {
-  const sorted = wines.slice();
+export function sortByPrice(wines, priceDir) {
+  const dir = priceDir === 'asc' ? 1 : -1;
+  return wines.slice().sort((a, b) => dir * (Number(a.price || 0) - Number(b.price || 0)));
+}
+
+function sortWines(wines, sortBy, priceDir) {
+  let sorted = wines.slice();
   if (sortBy === 'price') {
-    sorted.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
+    sorted = sortByPrice(sorted, priceDir);
   } else if (sortBy === 'drinkby') {
     sorted.sort((a, b) => ripeningInfo(b).progress - ripeningInfo(a).progress);
   } else {
@@ -23,11 +28,14 @@ function sortWines(wines, sortBy) {
   return sorted;
 }
 
-function sortChipRowHTML(sortBy) {
+// Tapping the active Price chip again flips the direction (↓ high→low, ↑ low→high).
+function sortChipRowHTML(sortBy, priceDir) {
   const active = sortBy || 'name';
-  const chips = SORT_OPTIONS.map(
-    (o) => `<button class="sort-chip ${active === o.key ? 'active' : ''}" data-action="set-sort" data-sort="${o.key}">${escapeHtml(o.label)}</button>`
-  ).join('');
+  const chips = SORT_OPTIONS.map((o) => {
+    const arrow = o.key === 'price' && active === 'price' ? (priceDir === 'asc' ? ' &uarr;' : ' &darr;') : '';
+    const title = o.key === 'price' && active === 'price' ? ` title="${priceDir === 'asc' ? 'Low to high' : 'High to low'} — tap to flip"` : '';
+    return `<button class="sort-chip ${active === o.key ? 'active' : ''}" data-action="set-sort" data-sort="${o.key}"${title}>${escapeHtml(o.label)}${arrow}</button>`;
+  }).join('');
   return `<div class="sort-chip-row"><span class="sort-chip-label">Sort</span>${chips}</div>`;
 }
 
@@ -64,13 +72,13 @@ function breadcrumbHTML(nav) {
     .join('')}</div>`;
 }
 
-export function renderVoorraad(state, searchQuery, colorFilter, sortBy) {
+export function renderVoorraad(state, { searchQuery, colorFilter, grapeFilter, sortBy, priceDir }) {
   const bar = searchBarHTML(searchQuery);
   const inventory = state.inventory;
 
   if (searchQuery.trim() !== '') {
     const q = searchQuery.trim().toLowerCase();
-    const fields = ['name', 'estate', 'grapeVariety', 'region', 'country', 'color', 'classification'];
+    const fields = ['name', 'estate', 'grapeVariety', 'region', 'place', 'country', 'color', 'classification'];
     const matches = inventory.filter(
       (w) => fields.some((f) => String(w[f] || '').toLowerCase().includes(q)) || (q.startsWith('spark') && w.sparkling)
     );
@@ -87,19 +95,20 @@ export function renderVoorraad(state, searchQuery, colorFilter, sortBy) {
 
   if (nav.level === 'country') {
     const filter = colorFilter || 'All';
-    const filterRow = colorFilterRowHTML(inventory, filter);
+    const grape = grapeFilter || 'All';
+    const filterRow = colorFilterRowHTML(inventory, filter) + grapeFilterHTML(inventory, grape, filter);
 
-    if (filter !== 'All') {
+    if (filter !== 'All' || grape !== 'All') {
       const matches = sortWines(
-        inventory.filter((w) => matchesFilter(w, filter)),
-        sortBy
+        inventory.filter((w) => matchesFilters(w, filter, grape)),
+        sortBy,
+        priceDir
       );
-      const emptyLabel = filter === 'Sparkling' ? 'sparkling' : filter.toLowerCase();
       const list =
         matches.length === 0
-          ? `<div class="empty-state"><div class="glyph">&#127863;</div><p>No ${escapeHtml(emptyLabel)} wines in stock.</p></div>`
+          ? `<div class="empty-state"><div class="glyph">&#127863;</div><p>No wines in stock for this filter.</p></div>`
           : matches.map((w) => cardHTML(w, true)).join('');
-      const sortRow = matches.length > 0 ? sortChipRowHTML(sortBy) : '';
+      const sortRow = matches.length > 0 ? sortChipRowHTML(sortBy, priceDir) : '';
       return bar + dashboardHTML(inventory) + filterRow + sortRow + list;
     }
 
