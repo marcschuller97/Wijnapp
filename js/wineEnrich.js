@@ -1,11 +1,12 @@
 import { authHeaders } from './auth.js';
 
 /**
- * Asks Claude to research a wine on the web (general info + tasting profile).
- * Best-effort: returns null on any failure instead of throwing, so callers
- * can fire this in the background without interrupting the add-wine flow.
+ * Asks Claude to research a wine on the web (general info, tasting profile,
+ * price estimate, corrected grape/region).
+ * Returns { data } on success, { data: null } when nothing was found, or
+ * { error } with a user-facing message — never throws.
  */
-export async function fetchWineEnrichment(wine) {
+export async function enrichWine(wine) {
   try {
     const res = await fetch('/api/enrich', {
       method: 'POST',
@@ -20,14 +21,21 @@ export async function fetchWineEnrichment(wine) {
         classification: wine.classification,
       }),
     });
-    if (!res.ok) return null;
-    const data = await res.json();
+    let data = null;
+    try {
+      data = await res.json();
+    } catch (e) {
+      /* e.g. a platform timeout page */
+    }
+    if (!res.ok) {
+      const message = (data && data.error) || (res.status === 504 ? 'The lookup took too long. Please try again.' : `Lookup failed (${res.status}).`);
+      return { error: message };
+    }
     const hasSomething =
       data &&
       (data.description || (data.flavorProfile && data.flavorProfile.length > 0) || data.estimatedPrice > 0 || data.grapeVariety || data.region);
-    if (!hasSomething) return null;
-    return data;
+    return { data: hasSomething ? data : null };
   } catch (e) {
-    return null;
+    return { error: 'No connection — please try again when you are online.' };
   }
 }

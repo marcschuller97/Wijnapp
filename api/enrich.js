@@ -33,16 +33,18 @@ export default async function handler(req, res) {
     'Use the search engine to find (1) the ACTUAL grape variety/blend and the ACTUAL wine region for this specific wine, to verify or correct the values above, ' +
     '(2) general information about the wine, the estate/producer, and the grape variety, ' +
     '(3) concrete flavor and aroma characteristics (fruit, spice, oak, mineral, floral, etc.), and ' +
-    '(4) the typical retail price for a 75cl bottle at online wine retailers, in EUR. ' +
+    '(4) the typical retail price for a 75cl bottle at online wine retailers or wine shops, in EUR (convert from other currencies if needed). ' +
     "If you find nothing for this exact vintage but do find something for the wine style in general (e.g. a different vintage of the same cuvée), " +
     'use that as an approximation. Never invent facts, grape varieties, regions, flavors, or prices you cannot back up with the search results — ' +
     "if you truly find nothing or aren't confident enough, leave the fields empty/0 instead of making something up. For the price, if you find " +
-    'multiple listings, use a realistic average, not the highest or lowest outlier.\n\n' +
+    'multiple listings, use a realistic average, not the highest or lowest outlier. If there is no listing for this exact wine, base the price on ' +
+    'listings you did find for the same cuvée in another vintage, or for comparable wines from the same producer and appellation — ' +
+    'a well-founded estimate is better than 0; use 0 only when the search gives you nothing to base a price on.\n\n' +
     'As your very last message, return ONLY a valid JSON object — no introductory sentence before it, no explanation after it, no markdown code-block formatting, ' +
     'and no citations or citation tags in the text itself. Exactly these fields: ' +
     'description (3-5 sentences in English about the wine/estate/grape, or an empty string "" if nothing found), ' +
     'flavorProfile (array of 4-7 short English flavor or aroma terms such as "Black cherry", "Clove", "Vanilla", or an empty array [] if nothing found), ' +
-    'estimatedPrice (number, average retail price per bottle in EUR with no currency symbol, e.g. 15.50, or 0 if you cannot find a reliable price), ' +
+    'estimatedPrice (number, average retail price per bottle in EUR with no currency symbol, e.g. 15.50, or 0 if the search gave you nothing to base it on), ' +
     'grapeVariety (the verified grape variety/blend if you found it with confidence, e.g. "Grenache, Syrah, Mourvèdre", or an empty string "" if not confident or nothing different from the given value), ' +
     'region (the verified wine region/appellation if you found it with confidence, e.g. "Châteauneuf-du-Pape", or an empty string "" if not confident or nothing different from the given value).';
 
@@ -55,9 +57,11 @@ export default async function handler(req, res) {
       messages: [{ role: 'user', content: promptText }],
     });
     if (!result.ok) {
+      console.error('enrich: Claude API error', result.status, result.error);
       res.status(result.status).json({ error: result.error });
       return;
     }
+    if (result.searchErrors.length > 0) console.error('enrich: web search errors', result.searchErrors);
     // With a search tool the answer is split over several text blocks
     // (preamble, cited fragments, the JSON). The JSON is asked for last, so
     // try the last block first and fall back to all text joined together.
@@ -84,6 +88,18 @@ export default async function handler(req, res) {
     }
 
     const estimatedPrice = Number(parsed.estimatedPrice);
+    const foundNothing = !parsed.description && !(Array.isArray(parsed.flavorProfile) && parsed.flavorProfile.length) && !(estimatedPrice > 0);
+    if (foundNothing && result.searchErrors.length > 0) {
+      // The search itself failed, so the empty answer says nothing about the wine.
+      const code = result.searchErrors[0];
+      res.status(502).json({
+        error:
+          code === 'unavailable' || code === 'invalid_tool_input'
+            ? `Web search failed (${code}). Check that web search is enabled for your organization in the Claude Console.`
+            : `Web search failed (${code}). Please try again later.`,
+      });
+      return;
+    }
 
     res.status(200).json({
       description: stripCiteTags(parsed.description),
@@ -95,6 +111,7 @@ export default async function handler(req, res) {
       region: stripCiteTags(parsed.region),
     });
   } catch (e) {
+    console.error('enrich: unexpected error', e);
     res.status(500).json({ error: e.message || 'Something went wrong while looking up this wine.' });
   }
 }

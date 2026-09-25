@@ -71,7 +71,15 @@ async function handleMockAnthropic(req, res) {
   const text = (t) => ({ type: 'text', text: t });
   let blocks;
 
-  if (Array.isArray(body.tools) && body.tools.some((t) => t.type.startsWith('web_search'))) {
+  const searchFails = typeof content === 'string' && content.includes('searchfail');
+  if (searchFails) {
+    // How Anthropic reports a failed search: HTTP 200, error object in the result.
+    blocks = [
+      { type: 'server_tool_use', id: 'srv_1', name: 'web_search', input: { query: 'wine' } },
+      { type: 'web_search_tool_result', tool_use_id: 'srv_1', content: { type: 'web_search_tool_result_error', error_code: 'unavailable' } },
+      text('{"description":"","flavorProfile":[],"estimatedPrice":0,"grapeVariety":"","region":""}'),
+    ];
+  } else if (Array.isArray(body.tools) && body.tools.some((t) => t.type.startsWith('web_search'))) {
     blocks = [
       text("I'll search for this wine."),
       { type: 'server_tool_use', id: 'srv_1', name: 'web_search', input: { query: 'wine' } },

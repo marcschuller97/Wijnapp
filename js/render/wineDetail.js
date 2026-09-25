@@ -14,7 +14,18 @@ function infoRow(label, value) {
   return `<div class="info-row"><div class="info-row-label">${escapeHtml(label)}</div><div class="info-row-value">${escapeHtml(value)}</div></div>`;
 }
 
-export function renderWineDetail(wine) {
+function enrichHTML(wine, status) {
+  const own = status && status.id === wine.id ? status : null;
+  const busy = !!(own && own.state === 'busy');
+  const missing = !wine.description || !(Number(wine.price) > 0);
+  return `
+    ${own ? `<div class="import-status ${own.state}" style="margin-top:14px;">${escapeHtml(own.message)}</div>` : ''}
+    <button class="${missing ? 'btn-primary' : 'btn-secondary'}" style="width:100%; margin-top:14px;" data-action="enrich-wine" data-id="${escapeHtml(wine.id)}" ${busy ? 'disabled' : ''}>
+      ${busy ? 'Searching…' : missing ? 'Look up info &amp; price' : 'Look up again'}
+    </button>`;
+}
+
+export function renderWineDetail(wine, enrichStatus) {
   if (!wine) return '';
   const r = ripeningInfo(wine);
   const hasNotes = !!(wine.description || (wine.flavorProfile && wine.flavorProfile.length));
@@ -67,6 +78,8 @@ export function renderWineDetail(wine) {
 
     ${!hasNotes ? `<div class="detail-empty" style="margin-top:8px;">No additional information about this wine has been found online yet.</div>` : ''}
 
-    <button class="btn-secondary" style="width:100%; margin-top:22px;" data-action="open-edit" data-id="${escapeHtml(wine.id)}">Edit wine</button>
+    ${enrichHTML(wine, enrichStatus)}
+
+    <button class="btn-secondary" style="width:100%; margin-top:10px;" data-action="open-edit" data-id="${escapeHtml(wine.id)}">Edit wine</button>
   `;
 }

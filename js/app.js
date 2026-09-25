@@ -13,7 +13,7 @@ import { pairingModalHTML } from './render/pairingModal.js';
 import { toDraftItem } from './wineDraft.js';
 import { recognizeFromPhotos } from './photoRecognize.js';
 import { findWinePairing } from './winePairing.js';
-import { fetchWineEnrichment } from './wineEnrich.js';
+import { enrichWine } from './wineEnrich.js';
 import { ensureUnlocked } from './auth.js';
 
 const ui = {
@@ -34,6 +34,7 @@ const ui = {
   pairingQuery: '',
   pairingStatus: null,
   pairingResults: [],
+  enrichStatus: null, // { id, state: 'busy' | 'ok' | 'err', message } for the detail screen
 };
 
 const appEl = document.getElementById('app');
@@ -113,7 +114,7 @@ function render() {
     <div class="content">
       ${
         ui.detailId
-          ? renderWineDetail(state.inventory.find((w) => w.id === ui.detailId))
+          ? renderWineDetail(state.inventory.find((w) => w.id === ui.detailId), ui.enrichStatus)
           : `
         ${ui.activeTab === 'stock' ? renderVoorraad(state, ui.searchQuery, ui.colorFilter, ui.sortBy) : ''}
         ${ui.activeTab === 'recent' ? renderRecentlyAdded(state) : ''}
@@ -263,21 +264,61 @@ function submitWine() {
   closeModal();
 }
 
-// Best-effort background task: looks up general info + flavor profile for a
-// newly added wine. Fails silently — the wine just stays without extra info
-// if nothing is found or the request fails.
-async function enrichWineAsync(id) {
+function applyEnrichment(id, data) {
   const wine = state.inventory.find((w) => w.id === id);
   if (!wine) return;
-  const data = await fetchWineEnrichment(wine);
-  if (!data) return;
-  const updates = { description: data.description || '', flavorProfile: data.flavorProfile || [] };
-  if ((!wine.price || wine.price === 0) && data.estimatedPrice > 0) {
+  const updates = {};
+  // Keep existing info when a new lookup comes back emptier.
+  if (data.description) updates.description = data.description;
+  if (data.flavorProfile && data.flavorProfile.length) updates.flavorProfile = data.flavorProfile;
+  // Never overwrite a price the user entered (e.g. from a receipt)...
+  if ((!wine.price || Number(wine.price) === 0) && data.estimatedPrice > 0) {
     updates.price = data.estimatedPrice;
   }
+  // ...but a corrected grape/region always wins: the photo reading is the
+  // unreliable one.
   if (data.grapeVariety) updates.grapeVariety = data.grapeVariety;
   if (data.region) updates.region = data.region;
   updateWine(id, updates);
+}
+
+// Best-effort background task for a newly added wine. Doesn't interrupt the
+// add flow; if it fails, the detail screen's "Look up" button can retry and
+// shows the reason.
+async function enrichWineAsync(id) {
+  const wine = state.inventory.find((w) => w.id === id);
+  if (!wine) return;
+  const { data, error } = await enrichWine(wine);
+  if (error) {
+    console.warn('Background lookup failed:', error);
+    return;
+  }
+  if (!data) return;
+  applyEnrichment(id, data);
+  render();
+}
+
+// Foreground lookup from the detail screen, with visible progress and errors.
+async function enrichFromDetail(id) {
+  const wine = state.inventory.find((w) => w.id === id);
+  if (!wine || (ui.enrichStatus && ui.enrichStatus.state === 'busy')) return;
+  ui.enrichStatus = { id, state: 'busy', message: 'Searching the web for this wine… (can take up to a minute)' };
+  render();
+  const { data, error } = await enrichWine(wine);
+  if (error) {
+    ui.enrichStatus = { id, state: 'err', message: error };
+  } else if (!data) {
+    ui.enrichStatus = { id, state: 'err', message: 'Nothing reliable found online for this wine.' };
+  } else {
+    const hadPrice = Number(wine.price) > 0;
+    applyEnrichment(id, data);
+    const priceNote = hadPrice
+      ? ' Your own price was kept.'
+      : data.estimatedPrice > 0
+        ? ` Estimated price: €${data.estimatedPrice.toFixed(2)}.`
+        : ' No price found.';
+    ui.enrichStatus = { id, state: 'ok', message: `Info updated.${priceNote}` };
+  }
   render();
 }
 
@@ -389,8 +430,12 @@ appEl.addEventListener('click', (e) => {
     case 'open-edit':
       openEditModal(el.dataset.id);
       break;
+    case 'enrich-wine':
+      enrichFromDetail(el.dataset.id);
+      break;
     case 'open-detail':
       ui.detailId = el.dataset.id;
+      if (!ui.enrichStatus || ui.enrichStatus.state !== 'busy') ui.enrichStatus = null;
       render();
       break;
     case 'close-detail':

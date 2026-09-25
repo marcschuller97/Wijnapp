@@ -55,8 +55,10 @@ export function guardAiRequest(req, res) {
 }
 
 /**
- * Calls the Messages API. Returns { ok: true, texts } with every text block
- * in order, or { ok: false, status, error } with a status to pass on.
+ * Calls the Messages API. Returns { ok: true, texts, searchErrors } with every
+ * text block in order, or { ok: false, status, error } with a status to pass on.
+ * searchErrors lists web-search failures: those come back inside a normal 200
+ * response (as an error object in the tool result), not as an HTTP error.
  */
 export async function callClaude(apiKey, params) {
   const claudeRes = await fetch(ANTHROPIC_API_URL, {
@@ -83,8 +85,12 @@ export async function callClaude(apiKey, params) {
     return { ok: false, status: claudeRes.status === 401 ? 503 : 502, error };
   }
 
-  const texts = ((data && data.content) || []).filter((b) => b.type === 'text').map((b) => b.text);
-  return { ok: true, texts };
+  const blocks = (data && data.content) || [];
+  const texts = blocks.filter((b) => b.type === 'text').map((b) => b.text);
+  const searchErrors = blocks
+    .filter((b) => b.type === 'web_search_tool_result' && b.content && !Array.isArray(b.content) && b.content.error_code)
+    .map((b) => b.content.error_code);
+  return { ok: true, texts, searchErrors };
 }
 
 // The model sometimes wraps its answer — "Here's the JSON: ```json [...] ```"
