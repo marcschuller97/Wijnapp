@@ -75,10 +75,10 @@ function render() {
           <div class="stat-num">${total}</div>
           <div class="stat-label">bottles in stock</div>
         </div>
-        <div class="stat urgent-stat">
+        <button class="stat urgent-stat" data-action="show-attention">
           <div class="stat-num">${urgent}</div>
-          <div class="stat-label">need attention</div>
-        </div>
+          <div class="stat-label">need attention <span class="stat-chevron">&rsaquo;</span></div>
+        </button>
         <button class="stat" data-action="show-by-price">
           <div class="stat-num">${valueLabel}</div>
           <div class="stat-label">cellar value <span class="stat-chevron">&rsaquo;</span></div>
@@ -399,6 +399,12 @@ appEl.addEventListener('click', (e) => {
       ui.colorFilter = 'All';
       ui.detailId = null;
       setNav('country');
+      render();
+      break;
+    case 'show-attention':
+      ui.activeTab = 'soon';
+      ui.searchQuery = '';
+      ui.detailId = null;
       render();
       break;
     case 'show-by-price':
