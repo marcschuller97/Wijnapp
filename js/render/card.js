@@ -1,4 +1,4 @@
-import { escapeHtml, formatEuro } from '../utils.js';
+import { escapeHtml, formatEuro, badgeLabel, badgeScaleStyle } from '../utils.js';
 import { ripeningInfo } from '../model.js';
 
 function gaugeHTML(wine) {
@@ -8,7 +8,7 @@ function gaugeHTML(wine) {
     <div class="gauge-wrap">
       <div class="gauge-label-row">
         <span class="gauge-status" style="color:${r.color}">${escapeHtml(r.status)}</span>
-        <span>drink by ~${r.drinkByYear}</span>
+        <span>drink by ~${escapeHtml(r.drinkByYear)}</span>
       </div>
       <div class="gauge" style="color:${r.color}">
         <div class="gauge-fill" style="width:${pct}%"></div>
@@ -23,13 +23,8 @@ function hasClassification(classification) {
 
 function sealBadgeHTML(classification) {
   if (!hasClassification(classification)) return '';
-  // Split long, space-free prefixes (VDP.Ortswein) so the label wraps
-  // neatly across two lines instead of breaking mid-word.
-  const label = classification
-    .split(',')[0]
-    .trim()
-    .replace(/^VDP\.?\s*/i, 'VDP ');
-  return `<div class="seal-badge"><span>${escapeHtml(label)}</span></div>`;
+  const label = badgeLabel(classification);
+  return `<div class="seal-badge" ${badgeScaleStyle(label)}><span>${escapeHtml(label)}</span></div>`;
 }
 
 function noteHTML(notes) {
@@ -44,7 +39,7 @@ export function cardHTML(wine, showEstate) {
       <div class="card-top">
         <div>
           <div class="wine-name">${escapeHtml(wine.name)}</div>
-          <div class="wine-meta">${wine.vintage} · ${escapeHtml(wine.grapeVariety)} · ${formatEuro(wine.price)}</div>
+          <div class="wine-meta">${escapeHtml(wine.vintage)} · ${escapeHtml(wine.grapeVariety)} · ${formatEuro(wine.price)}</div>
           ${showEstate ? `<div class="wine-meta-domein">${escapeHtml(wine.estate)} · ${escapeHtml(wine.region)}, ${escapeHtml(wine.country)}</div>` : ''}
           ${noteHTML(wine.notes)}
         </div>
@@ -57,7 +52,7 @@ export function cardHTML(wine, showEstate) {
       <div class="card-footer">
         <div class="stepper">
           <button data-action="adjust" data-id="${id}" data-delta="-1">&ndash;</button>
-          <span class="stepper-count">${wine.quantity}</span>
+          <span class="stepper-count">${escapeHtml(wine.quantity)}</span>
           <button data-action="adjust" data-id="${id}" data-delta="1">+</button>
         </div>
         <button class="drink-btn" data-action="drink" data-id="${id}" ${wine.quantity <= 0 ? 'disabled' : ''}>Consumed</button>

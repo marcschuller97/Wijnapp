@@ -44,6 +44,20 @@ maakt alleen de twee gratis accounts aan en kopieert twee sleutels over.
    je eigen kelder — handmatig, of gewoon door foto's te maken van de flessen die je al
    hebt.
 
+## Lokaal draaien (optioneel)
+
+Wil je eerst op je eigen computer kijken? Er is een kleine dev-server zonder
+dependencies (alleen Node.js 18+ nodig) die de app én de `/api`-functies draait, met een
+tijdelijke in-memory database in plaats van Vercel KV:
+
+```bash
+npm run dev:mock                 # nep-AI: gratis, werkt zonder API-sleutel
+ANTHROPIC_API_KEY=sk-ant-... npm run dev   # echte Claude-aanroepen
+APP_PIN=1234 npm run dev:mock    # met pincode-slot
+```
+
+Open daarna http://localhost:3000. De map `dev/` wordt niet mee gedeployed.
+
 ## Geen wijnliefhebber? Werkt ook voor andere verzamelingen.
 
 Het datamodel (land/regio/domein/druivenras, kwalificering, jaartal) is met een paar

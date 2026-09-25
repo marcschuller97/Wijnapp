@@ -44,6 +44,20 @@ Claude Code can do for you if you paste in the starter prompt from
 5. Open the app, enter your PIN, and start replacing the sample data with your own
    cellar — by hand, or just by taking photos of the bottles you already own.
 
+
+## Running locally (optional)
+
+A small dependency-free dev server (Node.js 18+) runs the app and the `/api`
+functions, with a temporary in-memory store instead of Vercel KV:
+
+```bash
+npm run dev:mock                           # canned AI responses, no API key needed
+ANTHROPIC_API_KEY=sk-ant-... npm run dev   # real Claude calls
+APP_PIN=1234 npm run dev:mock              # with the PIN lock
+```
+
+Then open http://localhost:3000. The `dev/` folder is not deployed.
+
 ## Not a wine collector? It still adapts.
 
 The data model (country/region/estate/grape variety, classification, vintage) happens to

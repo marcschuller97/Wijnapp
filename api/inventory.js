@@ -1,3 +1,5 @@
+import { isAuthorized, parseBody } from './_lib/shared.js';
+
 const KV_KEY = 'winecellar:state';
 
 async function kvCommand(command) {
@@ -22,12 +24,6 @@ async function kvCommand(command) {
   return res.json();
 }
 
-function isAuthorized(req) {
-  const requiredPin = process.env.APP_PIN;
-  if (!requiredPin) return true; // not set yet: no lock active
-  return req.headers['x-app-pin'] === requiredPin;
-}
-
 export default async function handler(req, res) {
   if (!isAuthorized(req)) {
     res.status(401).json({ error: 'Incorrect or missing PIN.' });
@@ -46,7 +42,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'PUT' || req.method === 'POST') {
     try {
-      const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+      const body = parseBody(req);
       if (!body || !Array.isArray(body.inventory) || !Array.isArray(body.history)) {
         res.status(400).json({ error: 'Invalid data: inventory and history must be arrays.' });
         return;

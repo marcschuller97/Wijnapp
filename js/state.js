@@ -28,17 +28,54 @@ function saveLocal() {
   }
 }
 
-// Fire-and-forget sync to the shared store (Vercel KV). Silently no-ops
-// until a KV store is connected to the project — the app keeps working
-// on localStorage alone until then.
-function syncToServer() {
-  fetch(API_URL, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', ...authHeaders() },
-    body: JSON.stringify({ inventory: state.inventory, history: state.history, ownerName: state.ownerName }),
-  }).catch(() => {
-    /* offline, or KV not connected yet — local storage remains the source of truth */
-  });
+// Local changes the server hasn't confirmed yet. While this is set, a refresh
+// must not pull server data over them — it pushes them up instead.
+const DIRTY_KEY = 'winecellar-dirty';
+let dirty = readDirtyFlag();
+let syncsInFlight = 0;
+
+function readDirtyFlag() {
+  try {
+    return localStorage.getItem(DIRTY_KEY) === '1';
+  } catch (e) {
+    return false;
+  }
+}
+
+function setDirty(value) {
+  dirty = value;
+  try {
+    if (value) localStorage.setItem(DIRTY_KEY, '1');
+    else localStorage.removeItem(DIRTY_KEY);
+  } catch (e) {
+    /* ignore */
+  }
+}
+
+// Sync to the shared store (Vercel KV). Until a KV store is connected (503)
+// or while offline, the app keeps working on localStorage alone and retries
+// on the next refresh.
+async function syncToServer() {
+  setDirty(true);
+  syncsInFlight++;
+  try {
+    const res = await fetch(API_URL, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify({ inventory: state.inventory, history: state.history, ownerName: state.ownerName }),
+    });
+    // Only the most recent PUT may clear the flag — an older one finishing
+    // late doesn't prove the newest change arrived.
+    if (res.ok && syncsInFlight === 1) setDirty(false);
+  } catch (e) {
+    /* offline — local storage remains the source of truth for now */
+  } finally {
+    syncsInFlight--;
+  }
+}
+
+function isEmptyRemote(remote) {
+  return remote.inventory.length === 0 && (remote.history || []).length === 0;
 }
 
 function persist() {
@@ -71,18 +108,19 @@ export async function loadState() {
     if (res.ok) {
       const remote = await res.json();
       if (remote && Array.isArray(remote.inventory)) {
-        const remoteIsEmpty = remote.inventory.length === 0 && (remote.history || []).length === 0;
-        const localHasData = hadLocal && state.inventory.length > 0;
-        if (remoteIsEmpty && localHasData) {
-          // Server is (still) empty but we already have data — push it up
-          // instead of blindly wiping our own inventory.
+        const localHasData = hadLocal && (state.inventory.length > 0 || state.history.length > 0);
+        if (localHasData && (isEmptyRemote(remote) || dirty)) {
+          // Server is (still) empty, or we have unsynced local changes —
+          // push ours up instead of blindly wiping our own inventory.
           syncToServer();
         } else {
-          state.inventory = remote.inventory;
-          state.history = remote.history || [];
-          state.ownerName = remote.ownerName || state.ownerName || '';
-          saveLocal();
+          applyRemote(remote);
         }
+        return;
+      }
+      if (remote === null && hadLocal) {
+        // KV is connected but has never been written: seed it from local data.
+        syncToServer();
         return;
       }
     }
@@ -99,25 +137,40 @@ export async function loadState() {
   persist();
 }
 
+function applyRemote(remote) {
+  state.inventory = remote.inventory;
+  state.history = remote.history || [];
+  state.ownerName = remote.ownerName || '';
+  saveLocal();
+}
+
 // Refreshes inventory/history from the server (e.g. after changes made by a
 // partner). Returns true if something changed, so the UI can re-render.
 // Leaves UI state (nav, search query, open modals) untouched.
 export async function refreshFromServer() {
+  if (syncsInFlight > 0) return false; // our own write is still on its way
+  if (dirty) {
+    // A previous sync failed (offline, KV hiccup): retry pushing instead of
+    // pulling the older server copy over our changes.
+    syncToServer();
+    return false;
+  }
   try {
     const res = await fetch(API_URL, { headers: authHeaders() });
     if (!res.ok) return false;
     const remote = await res.json();
     if (!remote || !Array.isArray(remote.inventory)) return false;
+    if (syncsInFlight > 0 || dirty) return false; // a local change happened meanwhile
+    if (isEmptyRemote(remote) && (state.inventory.length > 0 || state.history.length > 0)) {
+      // Never let an empty server response wipe a filled local inventory.
+      syncToServer();
+      return false;
+    }
     const changed =
       JSON.stringify(remote.inventory) !== JSON.stringify(state.inventory) ||
       JSON.stringify(remote.history || []) !== JSON.stringify(state.history) ||
       (remote.ownerName || '') !== (state.ownerName || '');
-    if (changed) {
-      state.inventory = remote.inventory;
-      state.history = remote.history || [];
-      state.ownerName = remote.ownerName || '';
-      saveLocal();
-    }
+    if (changed) applyRemote(remote);
     return changed;
   } catch (e) {
     return false;

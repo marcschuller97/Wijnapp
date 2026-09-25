@@ -1,4 +1,6 @@
-const CACHE_NAME = 'winecellar-v3';
+// Bump this on EVERY deploy that changes a file below — otherwise phones keep
+// serving the previous version from cache.
+const CACHE_NAME = 'winecellar-v5';
 const ASSETS = [
   './index.html',
   './manifest.json',
@@ -50,17 +52,31 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
-  if (url.pathname.startsWith('/api/')) return; // always live, never from cache
+  // API responses (the shared inventory, AI calls) always come live from the
+  // network, never from cache — otherwise you'd see stale stock after a
+  // family member changed something.
+  if (url.origin === self.location.origin && url.pathname.startsWith('/api/')) return;
 
   // Network-first: as soon as there's a connection you get the latest version
   // right away. The cache is purely a fallback for opening the app offline.
   event.respondWith(
     fetch(event.request)
       .then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        // Don't let an error page (404/500) replace a good cached copy.
+        if (res.ok || res.type === 'opaque') {
+          const copy = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        }
         return res;
       })
-      .catch(() => caches.match(event.request))
+      .catch(async () => {
+        const cached = await caches.match(event.request);
+        if (cached) return cached;
+        if (event.request.mode === 'navigate') {
+          const shell = await caches.match('./index.html');
+          if (shell) return shell;
+        }
+        return Response.error();
+      })
   );
 });

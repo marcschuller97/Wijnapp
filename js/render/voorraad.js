@@ -18,7 +18,7 @@ function sortWines(wines, sortBy) {
   } else if (sortBy === 'drinkby') {
     sorted.sort((a, b) => ripeningInfo(b).progress - ripeningInfo(a).progress);
   } else {
-    sorted.sort((a, b) => a.name.localeCompare(b.name, 'en') || a.estate.localeCompare(b.estate, 'en'));
+    sorted.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'en') || String(a.estate || '').localeCompare(String(b.estate || ''), 'en'));
   }
   return sorted;
 }
@@ -39,7 +39,7 @@ function dashboardHTML(inventory) {
 }
 
 function searchBarHTML(searchQuery) {
-  return `<input class="search-input" id="search-input" type="text" placeholder="Search by name, estate, or grape…" value="${escapeHtml(searchQuery)}">`;
+  return `<input class="search-input" id="search-input" type="text" placeholder="Search name, estate, grape, region, color…" value="${escapeHtml(searchQuery)}">`;
 }
 
 function backBtnHTML(level, country, region) {
@@ -70,13 +70,9 @@ export function renderVoorraad(state, searchQuery, colorFilter, sortBy) {
 
   if (searchQuery.trim() !== '') {
     const q = searchQuery.trim().toLowerCase();
+    const fields = ['name', 'estate', 'grapeVariety', 'region', 'country', 'color', 'classification'];
     const matches = inventory.filter(
-      (w) =>
-        w.name.toLowerCase().includes(q) ||
-        w.estate.toLowerCase().includes(q) ||
-        (w.grapeVariety || '').toLowerCase().includes(q) ||
-        w.region.toLowerCase().includes(q) ||
-        w.country.toLowerCase().includes(q)
+      (w) => fields.some((f) => String(w[f] || '').toLowerCase().includes(q)) || (q.startsWith('spark') && w.sparkling)
     );
     if (matches.length === 0) {
       return bar + `<div class="empty-state"><div class="glyph">&#128269;</div><p>No wines found for "${escapeHtml(searchQuery)}".</p></div>`;

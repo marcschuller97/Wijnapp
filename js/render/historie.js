@@ -18,7 +18,7 @@ export function renderHistory(state) {
             (h) => `
           <div class="history-item">
             <span class="hi-name">${escapeHtml(h.name)}</span>
-            <span class="hi-meta">${escapeHtml(h.estate)} · ${h.vintage}</span>
+            <span class="hi-meta">${escapeHtml(h.estate)} · ${escapeHtml(h.vintage)}</span>
           </div>
         `
           )

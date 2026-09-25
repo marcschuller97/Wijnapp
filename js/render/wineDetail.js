@@ -1,4 +1,4 @@
-import { escapeHtml, formatEuro } from '../utils.js';
+import { escapeHtml, formatEuro, badgeLabel, badgeScaleStyle } from '../utils.js';
 import { ripeningInfo } from '../model.js';
 
 function hasClassification(classification) {
@@ -29,17 +29,17 @@ export function renderWineDetail(wine) {
           <div class="wine-name">${escapeHtml(wine.name)}</div>
           <div class="wine-meta-domein" style="margin-top:5px;">${escapeHtml(wine.estate)}</div>
         </div>
-        ${hasClassification(wine.classification) ? `<div class="detail-seal"><span>${escapeHtml(wine.classification.split(',')[0].trim().replace(/^VDP\.?\s*/i, 'VDP '))}</span></div>` : ''}
+        ${hasClassification(wine.classification) ? `<div class="detail-seal" ${badgeScaleStyle(badgeLabel(wine.classification))}><span>${escapeHtml(badgeLabel(wine.classification))}</span></div>` : ''}
       </div>
       <div class="detail-hero-stats">
-        <div class="detail-hero-stat"><div class="n">${wine.vintage}</div><div class="l">Vintage</div></div>
+        <div class="detail-hero-stat"><div class="n">${escapeHtml(wine.vintage)}</div><div class="l">Vintage</div></div>
         <div class="detail-hero-stat"><div class="n">${formatEuro(wine.price)}</div><div class="l">Per bottle</div></div>
-        <div class="detail-hero-stat"><div class="n">${wine.quantity}</div><div class="l">In stock</div></div>
+        <div class="detail-hero-stat"><div class="n">${escapeHtml(wine.quantity)}</div><div class="l">In stock</div></div>
       </div>
       <div class="gauge-wrap" style="margin-top:14px;">
         <div class="gauge-label-row">
           <span class="gauge-status" style="color:${r.color}">${escapeHtml(r.status)}</span>
-          <span>drink by ~${r.drinkByYear}</span>
+          <span>drink by ~${escapeHtml(r.drinkByYear)}</span>
         </div>
         <div class="gauge" style="color:${r.color}">
           <div class="gauge-fill" style="width:${Math.round(r.progress * 100)}%"></div>

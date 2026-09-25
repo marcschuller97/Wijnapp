@@ -1,0 +1,13 @@
+{
+  "name": "wijnapp",
+  "private": true,
+  "type": "module",
+  "description": "Wine cellar PWA — vanilla JS front-end, Vercel serverless functions in /api. No build step.",
+  "scripts": {
+    "dev": "node dev/server.mjs",
+    "dev:mock": "node dev/server.mjs --mock-ai"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

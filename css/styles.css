@@ -526,8 +526,10 @@ button.stat:active{background:var(--surface-2);}
   padding:2px;
 }
 .seal-badge span{
+  overflow-wrap:anywhere;
+  hyphens:manual;
   font-family:'Fraunces',serif;
-  font-size:7.5px;
+  font-size:calc(7.5px * var(--seal-scale, 1));
   font-weight:600;
   color:var(--gold);
   text-align:center;
@@ -785,8 +787,10 @@ button.stat:active{background:var(--surface-2);}
   padding:3px;
 }
 .detail-seal span{
+  overflow-wrap:anywhere;
+  hyphens:manual;
   font-family:'Fraunces',serif;
-  font-size:8px;
+  font-size:calc(8px * var(--seal-scale, 1));
   font-weight:600;
   color:var(--gold);
   text-align:center;
@@ -799,6 +803,7 @@ button.stat:active{background:var(--surface-2);}
   -webkit-line-clamp:3;
   -webkit-box-orient:vertical;
 }
+/* --seal-scale is set inline for labels with long words (see badgeScaleStyle). */
 .detail-hero-stats{
   display:flex;
   gap:8px;

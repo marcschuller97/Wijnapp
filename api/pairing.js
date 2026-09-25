@@ -1,49 +1,14 @@
-const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const MODEL = 'claude-haiku-4-5';
+import { guardAiRequest, callClaude, parseJsonLoose } from './_lib/shared.js';
+
 const MAX_WINES = 200;
 
-function isAuthorized(req) {
-  const requiredPin = process.env.APP_PIN;
-  if (!requiredPin) return true; // not set yet: no lock active
-  return req.headers['x-app-pin'] === requiredPin;
-}
-
-function stripCodeFences(text) {
-  return text
-    .trim()
-    .replace(/^```json\s*/i, '')
-    .replace(/^```\s*/, '')
-    .replace(/```\s*$/, '')
-    .trim();
-}
-
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    res.status(405).json({ error: 'Method not allowed' });
-    return;
-  }
+  const guarded = guardAiRequest(req, res);
+  if (!guarded) return;
+  const { apiKey, body } = guarded;
 
-  if (!isAuthorized(req)) {
-    res.status(401).json({ error: 'Incorrect or missing PIN.' });
-    return;
-  }
-
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    res.status(503).json({ error: 'The Claude API key has not been set up yet (ANTHROPIC_API_KEY is missing in Vercel).' });
-    return;
-  }
-
-  let body;
-  try {
-    body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-  } catch (e) {
-    res.status(400).json({ error: 'Invalid request.' });
-    return;
-  }
-
-  const dish = body && typeof body.dish === 'string' ? body.dish.trim() : '';
-  const wines = body && Array.isArray(body.wines) ? body.wines : [];
+  const dish = typeof body.dish === 'string' ? body.dish.trim().slice(0, 500) : '';
+  const wines = Array.isArray(body.wines) ? body.wines : [];
 
   if (!dish) {
     res.status(400).json({ error: 'No dish provided.' });
@@ -58,7 +23,9 @@ export default async function handler(req, res) {
     return;
   }
 
-  const validIds = new Set(wines.map((w) => w && w.id));
+  // Only ids that were actually sent may come back — anything else is a
+  // wine the model made up.
+  const validIds = new Set(wines.map((w) => w && w.id).filter(Boolean));
 
   const promptText =
     `You are an experienced sommelier. I'm about to eat or cook this dish: "${dish}". ` +
@@ -70,49 +37,31 @@ export default async function handler(req, res) {
     'If truly no wine in the list is a reasonable match, return an empty array [].';
 
   try {
-    const claudeRes = await fetch(ANTHROPIC_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 1024,
-        messages: [{ role: 'user', content: promptText }],
-      }),
-    });
-
-    const claudeData = await claudeRes.json();
-
-    if (!claudeRes.ok) {
-      const message = (claudeData && claudeData.error && claudeData.error.message) || `Claude API error (${claudeRes.status})`;
-      res.status(claudeRes.status === 401 ? 503 : 502).json({ error: message });
+    const result = await callClaude(apiKey, { max_tokens: 1024, messages: [{ role: 'user', content: promptText }] });
+    if (!result.ok) {
+      res.status(result.status).json({ error: result.error });
       return;
     }
-
-    const textBlock = (claudeData.content || []).find((b) => b.type === 'text');
-    if (!textBlock) {
+    if (result.texts.length === 0) {
       res.status(502).json({ error: 'Unexpected response from Claude.' });
       return;
     }
 
     let parsed;
     try {
-      parsed = JSON.parse(stripCodeFences(textBlock.text));
+      parsed = parseJsonLoose(result.texts.join('\n'));
     } catch (e) {
       res.status(502).json({ error: 'Could not read the response from Claude. Please try again.' });
       return;
     }
-
     if (!Array.isArray(parsed)) {
       res.status(502).json({ error: 'Unexpected format from Claude.' });
       return;
     }
 
+    const seen = new Set();
     const matches = parsed
-      .filter((m) => m && validIds.has(m.id))
+      .filter((m) => m && validIds.has(m.id) && !seen.has(m.id) && seen.add(m.id))
       .slice(0, 3)
       .map((m) => ({ id: m.id, reason: typeof m.reason === 'string' ? m.reason : '' }));
 
