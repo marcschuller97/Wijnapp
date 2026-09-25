@@ -4,9 +4,9 @@ const COLOR_OPTIONS = ['White', 'Rosé', 'Red'];
 
 export function toDraftItem(raw) {
   // Show the review screen already split into region + village/appellation.
-  const { region, place } = normalizeRegionPlace(raw.region, raw.place);
+  const { region, place } = normalizeRegionPlace(raw.region, raw.place, raw.country);
   return {
-    country: raw.country || 'Germany',
+    country: raw.country || '',
     region,
     place,
     estate: raw.estate || '',

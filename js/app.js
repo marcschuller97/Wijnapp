@@ -236,8 +236,8 @@ async function handlePairingSubmit() {
 }
 
 function submitWine() {
-  const country = document.getElementById('f-country').value.trim() || 'Germany';
-  const region = document.getElementById('f-region').value.trim() || 'Ahr';
+  const country = document.getElementById('f-country').value.trim();
+  const region = document.getElementById('f-region').value.trim();
   const place = document.getElementById('f-place').value.trim();
   const estate = document.getElementById('f-estate').value.trim();
   const name = document.getElementById('f-name').value.trim();
@@ -250,8 +250,8 @@ function submitWine() {
   const price = document.getElementById('f-price').value;
   const notes = document.getElementById('f-notes').value.trim();
 
-  if (!estate || !name || !vintage) {
-    alert('Please fill in at least the estate, name, and vintage.');
+  if (!country || !estate || !name || !vintage) {
+    alert('Please fill in at least the country, estate, name, and vintage.');
     return;
   }
 
@@ -284,7 +284,7 @@ function applyEnrichment(id, data) {
   if (data.region) updates.region = data.region;
   if (data.place) {
     updates.place = data.place;
-  } else if (data.region && normalizeRegionPlace(data.region, '').region !== wine.region) {
+  } else if (data.region && normalizeRegionPlace(data.region, '', wine.country).region !== wine.region) {
     // Moved to a different region: the old village came from the same
     // unreliable reading, so don't keep it attached to the new region.
     updates.place = '';
@@ -393,7 +393,7 @@ appEl.addEventListener('click', (e) => {
       break;
     case 'nav':
       ui.detailId = null;
-      setNav(el.dataset.level, el.dataset.country, el.dataset.region, el.dataset.estate);
+      setNav(el.dataset.level, el.dataset.country, el.dataset.region, el.dataset.estate, el.dataset.place);
       render();
       break;
     case 'adjust':

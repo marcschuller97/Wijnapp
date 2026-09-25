@@ -64,12 +64,16 @@ const APPELLATIONS = {
     'Meursault', 'Puligny-Montrachet', 'Chassagne-Montrachet', 'Saint-Aubin', 'Santenay', 'Maranges',
     'Rully', 'Mercurey', 'Givry', 'Montagny', 'Côte Chalonnaise', 'Mâcon', 'Mâcon-Villages', 'Pouilly-Fuissé',
     'Saint-Véran', 'Viré-Clessé', 'Hautes-Côtes de Nuits', 'Hautes-Côtes de Beaune', 'Crémant de Bourgogne',
+    'Petit Chablis', 'Chablis Premier Cru', 'Chablis Grand Cru', 'Saint-Bris', 'Côtes d\'Auxerre',
+    'Coulanges-la-Vineuse', 'Tonnerre', 'Épineuil', 'Chitry', 'Vézelay', 'Côte d\'Or',
   ],
   Bordeaux: [
     'Médoc', 'Haut-Médoc', 'Saint-Estèphe', 'Pauillac', 'Saint-Julien', 'Margaux', 'Listrac', 'Moulis',
     'Pessac-Léognan', 'Graves', 'Sauternes', 'Barsac', 'Saint-Émilion', 'Saint-Émilion Grand Cru', 'Pomerol',
     'Lalande-de-Pomerol', 'Fronsac', 'Canon-Fronsac', 'Entre-Deux-Mers', 'Côtes de Bourg', 'Blaye',
-    'Côtes de Castillon', 'Castillon', 'Bordeaux Supérieur',
+    'Côtes de Castillon', 'Castillon', 'Bordeaux Supérieur', 'Côtes de Francs', 'Francs Côtes de Bordeaux',
+    'Blaye Côtes de Bordeaux', 'Cadillac Côtes de Bordeaux', 'Castillon Côtes de Bordeaux', 'Côtes de Bordeaux',
+    'Montagne-Saint-Émilion', 'Lussac-Saint-Émilion', 'Puisseguin-Saint-Émilion',
   ],
   Rhône: [
     'Côte-Rôtie', 'Condrieu', 'Saint-Joseph', 'Hermitage', 'Crozes-Hermitage', 'Cornas', 'Saint-Péray',
@@ -132,6 +136,42 @@ const APPELLATION_BY_KEY = new Map();
 Object.entries(APPELLATIONS).forEach(([region, places]) =>
   places.forEach((p) => APPELLATION_BY_KEY.set(regionKey(p), { region, place: p }))
 );
+
+// Country names (several languages) that sometimes trail a region:
+// "Chablis, Burgundy, France".
+const COUNTRY_KEYS = new Set(
+  ['France', 'Frankrijk', 'Frankreich', 'Italy', 'Italia', 'Italië', 'Italie', 'Germany', 'Deutschland', 'Duitsland',
+    'Spain', 'España', 'Spanje', 'Portugal', 'Austria', 'Österreich', 'Oostenrijk', 'USA', 'United States',
+    'Australia', 'Australië', 'New Zealand', 'Nieuw-Zeeland', 'South Africa', 'Zuid-Afrika', 'Argentina',
+    'Argentinië', 'Chile', 'Chili'].map(regionKey)
+);
+
+export function isCountryName(text, country) {
+  const k = regionKey(text);
+  return COUNTRY_KEYS.has(k) || (!!country && k === regionKey(country));
+}
+
+// Longest region names first, so "Languedoc-Roussillon" beats "Languedoc".
+const REGION_KEYS_LONGEST_FIRST = [...new Set([...REGION_BY_KEY.keys()])].sort((a, b) => b.length - a.length);
+
+/**
+ * "Bourgogne Côtes d'Auxerre" → { region: 'Bourgogne', rest: "Côtes d'Auxerre" }
+ * when the text starts with a known region followed by more words.
+ */
+export function regionPrefix(text) {
+  const original = String(text || '').trim();
+  const key = regionKey(original);
+  for (const k of REGION_KEYS_LONGEST_FIRST) {
+    if (!key.startsWith(k + ' ')) continue;
+    for (let i = 1; i < original.length; i++) {
+      if (/[\s-]/.test(original[i]) && regionKey(original.slice(0, i)) === k) {
+        const rest = original.slice(i + 1).replace(/^[\s-]+/, '').trim();
+        if (rest) return { region: REGION_BY_KEY.get(k), rest };
+      }
+    }
+  }
+  return null;
+}
 
 export function canonicalRegion(text) {
   return REGION_BY_KEY.get(regionKey(text)) || null;

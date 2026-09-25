@@ -1,6 +1,6 @@
 // Bump this on EVERY deploy that changes a file below — otherwise phones keep
 // serving the previous version from cache.
-const CACHE_NAME = 'winecellar-v8';
+const CACHE_NAME = 'winecellar-v9';
 const ASSETS = [
   './index.html',
   './manifest.json',

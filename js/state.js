@@ -106,14 +106,15 @@ export async function loadState() {
   if (migrateInventory()) persist();
 }
 
-// One-time upgrade for wines saved before the Place field existed: split
-// "Loire (Sancerre)" into region Loire + place Sancerre, map "Burgundy" to
-// Bourgogne, etc. Wines that already have a place key are left alone.
+// Brings every wine in line with the current region rules: split
+// "Loire (Sancerre)" / "Bourgogne Tonnerre" into region + place, map
+// "Burgundy" to Bourgogne, etc. Idempotent, so it only writes (and syncs)
+// when a wine actually changes — e.g. data saved by an older app version.
 function migrateInventory() {
   let changed = false;
   state.inventory.forEach((w) => {
-    if (w.place !== undefined) return;
-    const { region, place } = normalizeRegionPlace(w.region, '');
+    const { region, place } = normalizeRegionPlace(w.region, w.place, w.country);
+    if (w.region === region && w.place === place) return;
     w.region = region;
     w.place = place;
     changed = true;
@@ -209,7 +210,8 @@ export async function refreshFromServer() {
 function normalizeWine(w) {
   return {
     ...w,
-    ...normalizeRegionPlace(w.region, w.place),
+    ...normalizeRegionPlace(w.region, w.place, w.country),
+    country: String(w.country || '').trim() || 'Unknown',
     quantity: Math.max(0, Number(w.quantity) || 0),
     price: Number(w.price) || 0,
     vintage: Number(w.vintage) || new Date().getFullYear(),
@@ -289,8 +291,8 @@ export function resetData() {
   persist();
 }
 
-export function setNav(level, country, region, estate) {
-  state.nav = { level, country: country || null, region: region || null, estate: estate || null };
+export function setNav(level, country, region, estate, place) {
+  state.nav = { level, country: country || null, region: region || null, estate: estate || null, place: place || null };
 }
 
 export function setOwnerName(name) {

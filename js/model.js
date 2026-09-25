@@ -1,4 +1,4 @@
-import { canonicalRegion, appellationInfo, regionKey } from './data/regions.js';
+import { canonicalRegion, appellationInfo, regionKey, regionPrefix, isCountryName } from './data/regions.js';
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -107,40 +107,59 @@ export function hasGrape(wine, grapeKey) {
 /**
  * Keeps Region to the broad wine region ("Bourgogne", "Champagne") and moves
  * the village/appellation to Place. Handles "Loire (Sancerre)",
- * "Bourgogne - Meursault", "Pauillac, Bordeaux", bare appellations
- * ("Sancerre" → Loire) and English names ("Burgundy" → Bourgogne).
- * Unknown names are left as they are.
+ * "Bourgogne - Meursault", "Chablis, Burgundy, France",
+ * "Bourgogne Côtes d'Auxerre", bare appellations ("Sancerre" → Loire) and
+ * English names ("Burgundy" → Bourgogne). A place the user already set is
+ * kept. Unknown names are left as they are. Idempotent.
  */
-export function normalizeRegionPlace(region, place) {
-  let r = String(region || '').trim();
+export function normalizeRegionPlace(region, place, country) {
+  const raw = String(region || '').trim();
   let p = String(place || '').trim();
 
-  if (!p) {
-    const paren = r.match(/^(.+?)\s*\((.+)\)\s*$/);
-    const parts = paren ? [paren[1], paren[2]] : r.split(/\s+[-–—\/]\s+|\s*,\s*/).filter(Boolean);
-    if (parts.length === 2) {
-      const [a, b] = parts;
-      if (canonicalRegion(a) || (!canonicalRegion(b) && appellationInfo(b))) {
-        r = a;
-        p = b;
-      } else if (canonicalRegion(b) || appellationInfo(a)) {
-        r = b;
-        p = a;
-      }
+  const paren = raw.match(/^(.+?)\s*\((.+)\)\s*$/);
+  const parts = (paren ? [paren[1], paren[2]] : raw.split(/\s+[-–—\/]\s+|\s*,\s*/))
+    .map((x) => x.trim())
+    .filter((x) => x && !isCountryName(x, country));
+
+  let found = null;
+  const rest = [];
+  parts.forEach((part) => {
+    const canonical = canonicalRegion(part);
+    if (canonical && !found) {
+      found = canonical;
+      return;
     }
+    // A full appellation name wins over a prefix split ("Bordeaux Supérieur").
+    const app = appellationInfo(part);
+    const prefix = !app && regionPrefix(part);
+    if (prefix && !found) {
+      found = prefix.region;
+      rest.push(prefix.rest);
+      return;
+    }
+    rest.push(part);
+  });
+  if (!found) {
+    const app = rest.map(appellationInfo).find(Boolean);
+    if (app) found = app.region;
   }
 
-  const canonical = canonicalRegion(r);
-  if (canonical) {
-    r = canonical;
-  } else {
-    const app = appellationInfo(r);
-    if (app) {
-      if (!p || regionKey(p) === regionKey(r)) p = app.place;
-      r = app.region;
+  let r;
+  if (found) {
+    r = found;
+    if (!p && rest.length) {
+      const app = appellationInfo(rest[0]);
+      p = app ? app.place : rest[0];
     }
+  } else {
+    r = parts.join(', ');
   }
-  // The place shouldn't just repeat the region.
+
+  // "Bourgogne Tonnerre" as place under region Bourgogne → "Tonnerre".
+  if (p && r) {
+    const pre = regionPrefix(p);
+    if (pre && pre.region === r && !appellationInfo(p)) p = pre.rest;
+  }
   if (p && regionKey(p) === regionKey(r)) p = '';
   return { region: r, place: p };
 }

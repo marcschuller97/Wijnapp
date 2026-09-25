@@ -70,11 +70,11 @@ export function modalHTML(ui, state) {
         <div class="field-row">
           <div class="field">
             <label>Country</label>
-            <input id="f-country" value="${val('country', 'Germany')}">
+            <input id="f-country" placeholder="e.g. France" value="${val('country', '')}">
           </div>
           <div class="field">
             <label>Region</label>
-            <input id="f-region" placeholder="e.g. Bourgogne" value="${val('region', 'Ahr')}">
+            <input id="f-region" placeholder="e.g. Bourgogne" value="${val('region', '')}">
           </div>
         </div>
         <div class="field">
@@ -87,7 +87,7 @@ export function modalHTML(ui, state) {
         </div>
         <div class="field">
           <label>Wine name</label>
-          <input id="f-name" placeholder="e.g. Spätburgunder" value="${val('name', '')}">
+          <input id="f-name" placeholder="e.g. Chablis Premier Cru" value="${val('name', '')}">
         </div>
         <div class="field-row">
           <div class="field">
@@ -101,7 +101,7 @@ export function modalHTML(ui, state) {
         </div>
         <div class="field">
           <label>Grape variety</label>
-          <input id="f-grape" placeholder="e.g. Spätburgunder" value="${val('grapeVariety', 'Spätburgunder')}">
+          <input id="f-grape" placeholder="e.g. Chardonnay" value="${val('grapeVariety', '')}">
         </div>
         <div class="field-row">
           <div class="field">
