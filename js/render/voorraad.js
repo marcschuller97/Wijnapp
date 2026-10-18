@@ -46,8 +46,17 @@ function dashboardHTML(inventory) {
   return `<div class="pie-section">${country}${color ? `<div class="pie-divider"></div>${color}` : ''}</div>`;
 }
 
+// The ✕ appears once there's text; it clears the search and returns to the list.
 function searchBarHTML(searchQuery) {
-  return `<input class="search-input" id="search-input" type="text" placeholder="Search name, estate, grape, region, color…" value="${escapeHtml(searchQuery)}">`;
+  const clear = searchQuery
+    ? `<button type="button" class="search-clear" data-action="clear-search" aria-label="Clear search">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M7 7l10 10M17 7 7 17"/></svg>
+      </button>`
+    : '';
+  return `<div class="search-wrap">
+    <input class="search-input" id="search-input" type="text" enterkeyhint="search" autocomplete="off" placeholder="Search name, estate, grape, region, color…" value="${escapeHtml(searchQuery)}">
+    ${clear}
+  </div>`;
 }
 
 function backBtnHTML(level, country, region) {

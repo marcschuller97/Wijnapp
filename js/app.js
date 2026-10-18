@@ -413,6 +413,12 @@ appEl.addEventListener('click', (e) => {
       setNav('country');
       render();
       break;
+    case 'clear-search':
+      ui.searchQuery = '';
+      // Leave the field unfocused so the keyboard closes and the list shows.
+      if (document.activeElement) document.activeElement.blur();
+      render();
+      break;
     case 'show-attention':
       ui.activeTab = 'soon';
       ui.searchQuery = '';
@@ -572,6 +578,14 @@ appEl.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && e.target.id === 'pairing-input') {
     e.preventDefault();
     handlePairingSubmit();
+  }
+  if (e.target.id === 'search-input') {
+    // "Search" on the phone keyboard just closes it — results are already live.
+    if (e.key === 'Enter') e.target.blur();
+    if (e.key === 'Escape' && e.target.value) {
+      ui.searchQuery = '';
+      render();
+    }
   }
 });
 

@@ -422,6 +422,16 @@ button.stat:active{background:var(--surface-2);}
   margin-bottom:14px;
 }
 .search-input::placeholder{color:var(--text-muted);}
+.search-wrap{position:relative;margin-bottom:14px;}
+.search-wrap .search-input{margin-bottom:0;padding-right:46px;}
+.search-clear{
+  position:absolute;right:6px;top:50%;transform:translateY(-50%);
+  width:32px;height:32px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:var(--surface-2);border:none;cursor:pointer;padding:0;
+}
+.search-clear svg{width:16px;height:16px;stroke:var(--text-muted);}
+.search-clear:active{background:var(--border);}
 
 .pie-section{
   margin-bottom:14px;
